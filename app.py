@@ -2,7 +2,7 @@ import os
 import random
 import time
 import threading
-from flask import Flask, request, jsonify, send_file, render_template
+from flask import Flask, request, jsonify, send_file, render_template, after_this_request
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -97,7 +97,18 @@ def download_file(pin):
     filename = data['filename']
     try:
         response = send_file(filepath, as_attachment=True, download_name=filename)
-        del sessions[pin]
+
+        @after_this_request
+        def cleanup(resp):
+            # Clean up file and session AFTER streaming is done
+            sessions.pop(pin, None)
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except Exception:
+                pass
+            return resp
+
         return response
     except Exception as e:
         return jsonify({'error': str(e)}), 500
