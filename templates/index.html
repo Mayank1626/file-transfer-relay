@@ -201,7 +201,13 @@
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="receiveProgressFill"></div></div>
                     <div class="progress-text" id="receiveProgressText">Checking...</div>
                 </div>
-                <button class="btn btn-primary" id="receiveBtn" onclick="receiveFile()">Download File</button>
+                <button class="btn btn-primary" id="checkPinBtn" onclick="checkPin()">🔍 Check PIN</button>
+                <!-- File info card (hidden until PIN is verified) -->
+                <div class="result" id="fileInfoCard" style="display:none;">
+                    <p>📄 File ready to download:</p>
+                    <div class="pin-display" id="fileInfoName" style="font-size:1.2rem;letter-spacing:0;color:#00E676;word-break:break-all;"></div>
+                    <button class="btn btn-primary" style="margin-top:12px;" onclick="confirmDownload()">📥 Download Now</button>
+                </div>
                 <div class="status-msg" id="receiveStatus"></div>
             </div>
         </div>
@@ -359,65 +365,74 @@
             }
         }
 
-        async function receiveFile() {
+        let pendingPin = '';
+
+        async function checkPin() {
             const pin = document.getElementById('pinInput').value.trim();
             if (pin.length !== 6 || !/^\d+$/.test(pin)) {
                 showReceiveStatus('Please enter a valid 6-digit PIN.', 'error');
                 return;
             }
 
-            const receiveBtn = document.getElementById('receiveBtn');
+            const checkPinBtn = document.getElementById('checkPinBtn');
             const progress = document.getElementById('receiveProgress');
             const progressFill = document.getElementById('receiveProgressFill');
             const progressText = document.getElementById('receiveProgressText');
 
-            receiveBtn.disabled = true;
+            checkPinBtn.disabled = true;
             progress.style.display = 'block';
             progressFill.style.width = '0%';
             progressText.textContent = 'Checking PIN...';
             document.getElementById('receiveStatus').className = 'status-msg';
+            document.getElementById('fileInfoCard').style.display = 'none';
 
             try {
                 const checkRes = await fetch('/check/' + pin);
                 if (checkRes.status === 404) {
                     progress.style.display = 'none';
                     showReceiveStatus('❌ Invalid or expired PIN.', 'error');
-                    receiveBtn.disabled = false;
+                    checkPinBtn.disabled = false;
                     return;
                 }
                 const checkData = await checkRes.json();
                 if (checkData.status === 'waiting') {
                     progress.style.display = 'none';
                     showReceiveStatus('⏳ The sender is still uploading. Try again in a moment.', 'error');
-                    receiveBtn.disabled = false;
+                    checkPinBtn.disabled = false;
                     return;
                 }
 
-                progressText.textContent = 'Downloading: ' + checkData.filename + '...';
-                progressFill.style.width = '50%';
-
-                const a = document.createElement('a');
-                a.href = '/download/' + pin;
-                a.download = checkData.filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-
-                progressFill.style.width = '100%';
-                progressText.textContent = 'Download started!';
-
-                setTimeout(() => {
-                    progress.style.display = 'none';
-                    showReceiveStatus('✅ Download started! Check your Downloads folder.', 'success');
-                    receiveBtn.disabled = false;
-                    document.getElementById('pinInput').value = '';
-                }, 1500);
+                // Show file info — don't auto-download
+                progress.style.display = 'none';
+                pendingPin = pin;
+                document.getElementById('fileInfoName').textContent = checkData.filename;
+                document.getElementById('fileInfoCard').style.display = 'block';
+                checkPinBtn.disabled = false;
 
             } catch (err) {
                 progress.style.display = 'none';
                 showReceiveStatus('❌ Error: ' + err.message, 'error');
-                receiveBtn.disabled = false;
+                checkPinBtn.disabled = false;
             }
+        }
+
+        function confirmDownload() {
+            if (!pendingPin) return;
+
+            // Start download
+            const a = document.createElement('a');
+            a.href = '/download/' + pendingPin;
+            a.download = document.getElementById('fileInfoName').textContent;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            setTimeout(() => {
+                document.getElementById('fileInfoCard').style.display = 'none';
+                showReceiveStatus('✅ Download started! Check your Downloads folder.', 'success');
+                document.getElementById('pinInput').value = '';
+                pendingPin = '';
+            }, 1000);
         }
 
         function showReceiveStatus(msg, type) {
@@ -427,7 +442,7 @@
         }
 
         document.getElementById('pinInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') receiveFile();
+            if (e.key === 'Enter') checkPin();
         });
     </script>
 </body>
