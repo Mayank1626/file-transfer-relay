@@ -6,6 +6,7 @@
     <title>FileDrop — Send Files Instantly</title>
     <meta name="description" content="Transfer files between any devices instantly. No account needed. Original quality. Zero compression.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -29,183 +30,114 @@
             -webkit-text-fill-color: transparent;
             margin-bottom: 8px;
         }
-        .hero p {
-            color: #777;
-            font-size: 0.95rem;
-            letter-spacing: 0.5px;
-        }
+        .hero p { color: #777; font-size: 0.95rem; letter-spacing: 0.5px; }
         .badges {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-top: 16px;
-            flex-wrap: wrap;
+            display: flex; gap: 12px; justify-content: center;
+            margin-top: 16px; flex-wrap: wrap;
         }
         .badge {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            color: #aaa;
+            background: #1a1a1a; border: 1px solid #2a2a2a;
+            padding: 6px 14px; border-radius: 20px;
+            font-size: 0.8rem; color: #aaa;
         }
-        .container {
-            width: 100%;
-            max-width: 520px;
-            padding: 0 20px 40px;
-        }
+        .container { width: 100%; max-width: 520px; padding: 0 20px 40px; }
         .tabs {
-            display: flex;
-            background: #141414;
-            border-radius: 12px;
-            padding: 4px;
-            margin-bottom: 24px;
-            border: 1px solid #222;
+            display: flex; background: #141414; border-radius: 12px;
+            padding: 4px; margin-bottom: 24px; border: 1px solid #222;
         }
         .tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #666;
+            flex: 1; padding: 12px; text-align: center; border-radius: 10px;
+            cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #666;
             transition: all 0.3s ease;
         }
         .tab.active {
             background: linear-gradient(135deg, #00E676, #00BFA5);
-            color: #000;
-            box-shadow: 0 4px 15px rgba(0, 230, 118, 0.25);
+            color: #000; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.25);
         }
         .tab:hover:not(.active) { color: #aaa; }
         .card {
-            background: #141414;
-            border: 1px solid #222;
-            border-radius: 16px;
-            padding: 28px;
+            background: #141414; border: 1px solid #222;
+            border-radius: 16px; padding: 28px;
         }
-        .card h2 {
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-            color: #ccc;
-        }
+        .card h2 { font-size: 1.1rem; margin-bottom: 20px; color: #ccc; }
         .section { display: none; }
         .section.active { display: block; }
         .drop-zone {
-            border: 2px dashed #333;
-            border-radius: 12px;
-            padding: 40px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 16px;
+            border: 2px dashed #333; border-radius: 12px;
+            padding: 40px 20px; text-align: center; cursor: pointer;
+            transition: all 0.3s ease; margin-bottom: 16px;
         }
         .drop-zone:hover, .drop-zone.dragover {
-            border-color: #00E676;
-            background: rgba(0, 230, 118, 0.05);
+            border-color: #00E676; background: rgba(0, 230, 118, 0.05);
         }
         .drop-zone .icon { font-size: 2.5rem; margin-bottom: 8px; }
         .drop-zone p { color: #666; font-size: 0.85rem; }
         .drop-zone .filename {
-            color: #00E676;
-            font-weight: 600;
-            margin-top: 8px;
-            word-break: break-all;
+            color: #00E676; font-weight: 600; margin-top: 8px; word-break: break-all;
         }
         .btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
+            width: 100%; padding: 14px; border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 700; cursor: pointer;
+            transition: all 0.3s ease; font-family: 'Inter', sans-serif;
         }
-        .btn-primary {
-            background: linear-gradient(135deg, #00E676, #00BFA5);
-            color: #000;
-        }
+        .btn-primary { background: linear-gradient(135deg, #00E676, #00BFA5); color: #000; }
         .btn-primary:hover { box-shadow: 0 4px 20px rgba(0, 230, 118, 0.3); transform: translateY(-1px); }
         .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-secondary {
+            background: #222; color: #ccc; border: 1px solid #333;
+            font-size: 0.9rem; padding: 10px;
+        }
+        .btn-secondary:hover { background: #2a2a2a; }
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-row .btn { flex: 1; }
         .pin-input {
-            width: 100%;
-            padding: 16px;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 10px;
-            color: #fff;
-            font-size: 1.8rem;
-            text-align: center;
-            letter-spacing: 12px;
-            font-weight: 700;
-            font-family: 'Inter', monospace;
-            margin-bottom: 16px;
-            outline: none;
-            transition: border-color 0.3s;
+            width: 100%; padding: 16px; background: #1a1a1a;
+            border: 1px solid #333; border-radius: 10px; color: #fff;
+            font-size: 1.8rem; text-align: center; letter-spacing: 12px;
+            font-weight: 700; font-family: 'Inter', monospace;
+            margin-bottom: 16px; outline: none; transition: border-color 0.3s;
         }
         .pin-input:focus { border-color: #00E676; }
         .pin-input::placeholder { color: #444; letter-spacing: 6px; font-size: 1rem; }
-        .progress-wrap {
-            display: none;
-            margin: 16px 0;
-        }
+        .progress-wrap { display: none; margin: 16px 0; }
         .progress-bar-bg {
-            width: 100%;
-            height: 8px;
-            background: #222;
-            border-radius: 4px;
-            overflow: hidden;
+            width: 100%; height: 8px; background: #222;
+            border-radius: 4px; overflow: hidden;
         }
         .progress-bar-fill {
-            height: 100%;
-            width: 0%;
+            height: 100%; width: 0%;
             background: linear-gradient(90deg, #00E676, #00BFA5);
-            border-radius: 4px;
-            transition: width 0.2s;
+            border-radius: 4px; transition: width 0.2s;
         }
-        .progress-text {
-            text-align: center;
-            font-size: 0.85rem;
-            color: #888;
-            margin-top: 8px;
-        }
+        .progress-text { text-align: center; font-size: 0.85rem; color: #888; margin-top: 8px; }
         .result {
-            display: none;
-            text-align: center;
-            margin-top: 20px;
-            padding: 20px;
-            border-radius: 12px;
+            display: none; text-align: center; margin-top: 20px;
+            padding: 20px; border-radius: 12px;
             background: rgba(0, 230, 118, 0.08);
             border: 1px solid rgba(0, 230, 118, 0.2);
         }
         .result .pin-display {
-            font-size: 2.8rem;
-            font-weight: 800;
-            color: #00E676;
-            letter-spacing: 10px;
-            margin: 12px 0;
+            font-size: 2.8rem; font-weight: 800; color: #00E676;
+            letter-spacing: 10px; margin: 12px 0;
         }
         .result p { color: #888; font-size: 0.85rem; }
+        .qr-wrap {
+            display: flex; justify-content: center; margin: 16px 0 8px;
+            padding: 12px; background: #fff; border-radius: 8px;
+            width: fit-content; margin-left: auto; margin-right: auto;
+        }
         .status-msg {
-            text-align: center;
-            padding: 12px;
-            margin-top: 12px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            display: none;
+            text-align: center; padding: 12px; margin-top: 12px;
+            border-radius: 8px; font-size: 0.85rem; display: none;
         }
         .status-msg.error { display: block; background: rgba(244, 67, 54, 0.1); color: #f44336; border: 1px solid rgba(244, 67, 54, 0.2); }
         .status-msg.success { display: block; background: rgba(0, 230, 118, 0.08); color: #00E676; border: 1px solid rgba(0, 230, 118, 0.2); }
-        .footer {
-            text-align: center;
-            padding: 24px;
-            color: #444;
-            font-size: 0.75rem;
-        }
+        .footer { text-align: center; padding: 24px; color: #444; font-size: 0.75rem; }
         .footer a { color: #00BFA5; text-decoration: none; }
+        .file-count {
+            color: #00E676; font-size: 0.8rem; font-weight: 600;
+            margin-top: 4px;
+        }
         @media (max-width: 500px) {
             .hero h1 { font-size: 2.2rem; }
             .pin-input { font-size: 1.4rem; letter-spacing: 8px; }
@@ -233,23 +165,29 @@
         <!-- SEND SECTION -->
         <div id="sendSection" class="section active">
             <div class="card">
-                <h2>Send a File</h2>
+                <h2>Send File(s)</h2>
                 <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
                     <div class="icon">📁</div>
-                    <p>Click to browse or drag & drop a file here</p>
+                    <p>Click to browse or drag & drop files here</p>
+                    <p class="file-count" id="fileCount"></p>
                     <div class="filename" id="selectedFileName"></div>
                 </div>
-                <input type="file" id="fileInput" style="display:none">
+                <input type="file" id="fileInput" multiple style="display:none">
                 <div class="progress-wrap" id="sendProgress">
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="sendProgressFill"></div></div>
                     <div class="progress-text" id="sendProgressText">Uploading... 0%</div>
                 </div>
                 <div class="result" id="sendResult">
-                    <p>✅ File uploaded! Share this PIN:</p>
+                    <p>✅ Upload complete! Share this PIN:</p>
                     <div class="pin-display" id="generatedPin"></div>
-                    <p>The receiver enters this PIN to download.<br>Auto-deletes after download or 1 hour.</p>
+                    <div class="qr-wrap"><div id="qrCode"></div></div>
+                    <p>Scan the QR code or enter the PIN to download.<br>Auto-deletes after download or 1 hour.</p>
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" onclick="copyPin()">📋 Copy PIN</button>
+                        <button class="btn btn-secondary" onclick="sharePin()">📤 Share</button>
+                    </div>
                 </div>
-                <button class="btn btn-primary" id="sendBtn" disabled onclick="sendFile()">Send File</button>
+                <button class="btn btn-primary" id="sendBtn" disabled onclick="sendFile()">Send File(s)</button>
                 <div class="status-msg" id="sendStatus"></div>
             </div>
         </div>
@@ -275,7 +213,8 @@
     </div>
 
     <script>
-        let selectedFile = null;
+        let selectedFiles = [];
+        let currentPin = '';
 
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -289,16 +228,25 @@
             }
         }
 
-        // File selection
+        // File selection (multi-file)
         const fileInput = document.getElementById('fileInput');
         const dropZone = document.getElementById('dropZone');
 
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                selectedFile = e.target.files[0];
-                document.getElementById('selectedFileName').textContent = selectedFile.name + ' (' + formatSize(selectedFile.size) + ')';
-                document.getElementById('sendBtn').disabled = false;
+        function updateFileDisplay(files) {
+            selectedFiles = Array.from(files);
+            const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+            if (selectedFiles.length === 1) {
+                document.getElementById('selectedFileName').textContent = selectedFiles[0].name + ' (' + formatSize(selectedFiles[0].size) + ')';
+                document.getElementById('fileCount').textContent = '';
+            } else {
+                document.getElementById('selectedFileName').textContent = formatSize(totalSize) + ' total';
+                document.getElementById('fileCount').textContent = selectedFiles.length + ' files selected';
             }
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) updateFileDisplay(e.target.files);
         });
 
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -306,11 +254,7 @@
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) {
-                selectedFile = e.dataTransfer.files[0];
-                document.getElementById('selectedFileName').textContent = selectedFile.name + ' (' + formatSize(selectedFile.size) + ')';
-                document.getElementById('sendBtn').disabled = false;
-            }
+            if (e.dataTransfer.files.length > 0) updateFileDisplay(e.dataTransfer.files);
         });
 
         function formatSize(bytes) {
@@ -320,8 +264,32 @@
             return (bytes / 1073741824).toFixed(2) + ' GB';
         }
 
+        function copyPin() {
+            if (currentPin) {
+                navigator.clipboard.writeText(currentPin).then(() => {
+                    const btn = event.target;
+                    btn.textContent = '✅ Copied!';
+                    setTimeout(() => { btn.textContent = '📋 Copy PIN'; }, 2000);
+                });
+            }
+        }
+
+        function sharePin() {
+            if (navigator.share && currentPin) {
+                navigator.share({
+                    title: 'FileDrop File Transfer',
+                    text: 'Download my file on FileDrop!\nPIN: ' + currentPin + '\nWebsite: ' + window.location.origin,
+                });
+            } else if (currentPin) {
+                navigator.clipboard.writeText('Download my file on FileDrop!\nPIN: ' + currentPin + '\nWebsite: ' + window.location.origin);
+                const btn = event.target;
+                btn.textContent = '✅ Link Copied!';
+                setTimeout(() => { btn.textContent = '📤 Share'; }, 2000);
+            }
+        }
+
         async function sendFile() {
-            if (!selectedFile) return;
+            if (selectedFiles.length === 0) return;
             const sendBtn = document.getElementById('sendBtn');
             const progress = document.getElementById('sendProgress');
             const progressFill = document.getElementById('sendProgressFill');
@@ -343,7 +311,7 @@
 
                 // Step 2: Upload with progress
                 const formData = new FormData();
-                formData.append('file', selectedFile);
+                selectedFiles.forEach(f => formData.append('file', f));
 
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', '/upload/' + pin);
@@ -359,8 +327,13 @@
                 xhr.onload = () => {
                     if (xhr.status === 200) {
                         progress.style.display = 'none';
+                        currentPin = pin;
                         result.style.display = 'block';
                         document.getElementById('generatedPin').textContent = pin;
+                        // Generate QR code
+                        const qrEl = document.getElementById('qrCode');
+                        qrEl.innerHTML = '';
+                        new QRCode(qrEl, { text: pin, width: 160, height: 160, colorDark: '#000', colorLight: '#fff' });
                         sendBtn.disabled = false;
                     } else {
                         progress.style.display = 'none';
@@ -423,7 +396,6 @@
                 progressText.textContent = 'Downloading: ' + checkData.filename + '...';
                 progressFill.style.width = '50%';
 
-                // Trigger download
                 const a = document.createElement('a');
                 a.href = '/download/' + pin;
                 a.download = checkData.filename;
@@ -454,7 +426,6 @@
             el.className = 'status-msg ' + type;
         }
 
-        // Allow Enter key on PIN input
         document.getElementById('pinInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') receiveFile();
         });
