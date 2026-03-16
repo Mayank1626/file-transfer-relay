@@ -2,6 +2,7 @@ import os
 import random
 import time
 import threading
+import zipfile
 from flask import Flask, request, jsonify, send_file, render_template, after_this_request
 from werkzeug.utils import secure_filename
 
@@ -62,14 +63,31 @@ def upload_file(pin):
         return jsonify({'error': 'Invalid or expired PIN.'}), 404
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
-    file = request.files['file']
-    if file.filename == '':
+    
+    files = request.files.getlist('file')
+    files = [f for f in files if f.filename != '']
+    
+    if not files:
         return jsonify({'error': 'Empty filename'}), 400
-    filename = secure_filename(file.filename)
-    if not filename:
-        filename = "shared_file"
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{pin}_{filename}")
-    file.save(filepath)
+    
+    if len(files) == 1:
+        # Single file — save directly
+        file = files[0]
+        filename = secure_filename(file.filename) or "shared_file"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{pin}_{filename}")
+        file.save(filepath)
+    else:
+        # Multiple files — ZIP them server-side
+        filename = f"FileDrop_{len(files)}_files.zip"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{pin}_{filename}")
+        with zipfile.ZipFile(filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for f in files:
+                safe_name = secure_filename(f.filename) or "file"
+                temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{pin}_temp_{safe_name}")
+                f.save(temp_path)
+                zf.write(temp_path, safe_name)
+                os.remove(temp_path)
+    
     sessions[pin]['filename'] = filename
     sessions[pin]['filepath'] = filepath
     sessions[pin]['status'] = 'ready_for_download'
