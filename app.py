@@ -114,20 +114,7 @@ def download_file(pin):
     filepath = data['filepath']
     filename = data['filename']
     try:
-        response = send_file(filepath, as_attachment=True, download_name=filename)
-
-        @after_this_request
-        def cleanup(resp):
-            # Clean up file and session AFTER streaming is done
-            sessions.pop(pin, None)
-            try:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-            except Exception:
-                pass
-            return resp
-
-        return response
+        return send_file(filepath, as_attachment=True, download_name=filename)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
