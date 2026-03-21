@@ -315,12 +315,31 @@
                 const pinData = await pinRes.json();
                 const pin = pinData.pin;
 
-                // Step 2: Upload with progress
-                const formData = new FormData();
-                selectedFiles.forEach(f => formData.append('file', f));
+                // Step 2: Get Presigned URL with STRICT Content-Type
+                progressText.textContent = 'Securing direct stream channel...';
+                const fileToUpload = selectedFiles[0];
+                const cType = fileToUpload.type || 'application/octet-stream';
+                
+                const linkRes = await fetch('/upload-link/' + pin, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        filename: fileToUpload.name,
+                        content_type: cType 
+                    })
+                });
+                
+                if (linkRes.status !== 200) {
+                    throw new Error('Failed to get secure upload link');
+                }
+                const linkData = await linkRes.json();
+                const s3Url = linkData.upload_url;
 
+                // Step 3: Stream raw binary buffer directly to MinIO Direct-to-Storage
                 const xhr = new XMLHttpRequest();
-                xhr.open('POST', '/upload/' + pin);
+                xhr.open('PUT', s3Url);
+                // 🟢 Set precise Content-Type to avoid 403/Signature mismatch ERRORS!
+                xhr.setRequestHeader('Content-Type', cType);
 
                 xhr.upload.onprogress = (e) => {
                     if (e.lengthComputable) {
@@ -331,19 +350,18 @@
                 };
 
                 xhr.onload = () => {
-                    if (xhr.status === 200) {
+                    if (xhr.status === 200 || xhr.status === 201) {
                         progress.style.display = 'none';
                         currentPin = pin;
                         result.style.display = 'block';
                         document.getElementById('generatedPin').textContent = pin;
-                        // Generate QR code
                         const qrEl = document.getElementById('qrCode');
                         qrEl.innerHTML = '';
                         new QRCode(qrEl, { text: pin, width: 160, height: 160, colorDark: '#000', colorLight: '#fff' });
                         sendBtn.disabled = false;
                     } else {
                         progress.style.display = 'none';
-                        status.textContent = '❌ Upload failed. Please try again.';
+                        status.textContent = '❌ Direct Upload failed. Status: ' + xhr.status;
                         status.className = 'status-msg error';
                         sendBtn.disabled = false;
                     }
@@ -351,12 +369,13 @@
 
                 xhr.onerror = () => {
                     progress.style.display = 'none';
-                    status.textContent = '❌ Network error. Please try again.';
+                    status.textContent = '❌ Network error during direct S3 streaming.';
                     status.className = 'status-msg error';
                     sendBtn.disabled = false;
                 };
 
-                xhr.send(formData);
+                // Stream the raw, unbuffered file directly onto bucket storage
+                xhr.send(fileToUpload);
             } catch (err) {
                 progress.style.display = 'none';
                 status.textContent = '❌ Error: ' + err.message;
@@ -419,20 +438,21 @@
         function confirmDownload() {
             if (!pendingPin) return;
 
-            // Start download
-            const a = document.createElement('a');
-            a.href = '/download/' + pendingPin;
-            a.download = document.getElementById('fileInfoName').textContent;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            // Start download by fetching presigned URL from API
+            fetch('/download-link/' + pendingPin)
+                .then(res => res.json())
+                .then(data => {
+                    // 🟢 Use top-level redirection so QWebEngine treats as absolute download trigger
+                    window.location.href = data.download_url;
 
-            setTimeout(() => {
-                document.getElementById('fileInfoCard').style.display = 'none';
-                showReceiveStatus('✅ Download started! Check your Downloads folder.', 'success');
-                document.getElementById('pinInput').value = '';
-                pendingPin = '';
-            }, 1000);
+                    document.getElementById('fileInfoCard').style.display = 'none';
+                    showReceiveStatus('✅ Download started! Check your Downloads folder.', 'success');
+                    document.getElementById('pinInput').value = '';
+                    pendingPin = '';
+                })
+                .catch(err => {
+                    showReceiveStatus('❌ Error triggering download: ' + err.message, 'error');
+                });
         }
 
         function showReceiveStatus(msg, type) {
