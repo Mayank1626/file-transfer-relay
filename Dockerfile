@@ -14,5 +14,5 @@ COPY templates/ ./templates/
 
 EXPOSE 5000
 
-# Run using Gunicorn with generous stream timeout
-CMD ["gunicorn", "app:app", "--timeout", "300", "-b", "0.0.0.0:5000"]
+# Run using Gunicorn with generous stream timeout and multithreading
+CMD ["gunicorn", "app:app", "--timeout", "300", "--threads", "4", "--access-logfile", "-", "-b", "0.0.0.0:5000"]
