@@ -406,15 +406,19 @@
                         new QRCode(qrEl, { text: pin, width: 160, height: 160, colorDark: '#000', colorLight: '#fff' });
                         sendBtn.disabled = false;
                     } else {
-                        // Trigger Fallback with debug info visible
-                        const dbg = 'Direct Mode failed: ' + xhr.status + ' ' + (xhr.responseText || '').substring(0, 50);
-                        uploadWithFallback(dbg);
+                        // Freeze on screen to debug
+                        const dbg = 'Direct Mode failed: ' + xhr.status + ' | ' + (xhr.responseText || '').substring(0, 50);
+                        progressText.textContent = dbg;
+                        progressFill.style.backgroundColor = 'red';
+                        // uploadWithFallback(dbg);
                     }
                 };
 
                 xhr.onerror = () => {
-                    // Trigger Fallback
-                    uploadWithFallback('Direct Mode Network Error');
+                    // Freeze on screen to debug
+                    progressText.textContent = 'Direct Mode Network Error / Client Drop';
+                    progressFill.style.backgroundColor = 'red';
+                    // uploadWithFallback('Direct Mode Network Error');
                 };
 
                 // Stream the raw, unbuffered file directly onto bucket storage
