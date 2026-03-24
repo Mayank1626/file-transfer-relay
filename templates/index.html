@@ -349,8 +349,8 @@
                     }
                 };
 
-                const uploadWithFallback = async () => {
-                    progressText.textContent = 'Switching to secure streaming relay...';
+                const uploadWithFallback = async (dbg = 'Triggering relay...') => {
+                    progressText.textContent = dbg + ' | Preparing relay...';
                     try {
                         const formData = new FormData();
                         formData.append('file', fileToUpload);
@@ -362,22 +362,27 @@
                             if (e.lengthComputable) {
                                 const pct = Math.round((e.loaded / e.total) * 100);
                                 progressFill.style.width = pct + '%';
-                                progressText.textContent = 'Relay Uploading... ' + pct + '% (' + formatSize(e.loaded) + ' / ' + formatSize(e.total) + ')';
+                                if (pct === 100) {
+                                    progressText.textContent = 'Relay Uploading... 100% (Writing to Server Disk, Please Wait 30-60s...)';
+                                } else {
+                                    progressText.textContent = 'Relay Uploading... ' + pct + '% (' + formatSize(e.loaded) + ' / ' + formatSize(e.total) + ')';
+                                }
                             }
                         };
                         
                         fbXhr.onload = () => {
+                            progress.style.display = 'none';
+                            sendBtn.disabled = false;
                             if (fbXhr.status === 200) {
-                                progress.style.display = 'none';
                                 currentPin = pin;
                                 result.style.display = 'block';
                                 document.getElementById('generatedPin').textContent = pin;
                                 const qrEl = document.getElementById('qrCode');
                                 qrEl.innerHTML = '';
                                 new QRCode(qrEl, { text: pin, width: 160, height: 160, colorDark: '#000', colorLight: '#fff' });
-                                sendBtn.disabled = false;
                             } else {
-                                throw new Error('Relay upload failed: ' + fbXhr.status);
+                                status.textContent = '❌ Relay upload failed. Status: ' + fbXhr.status;
+                                status.className = 'status-msg error';
                             }
                         };
                         fbXhr.onerror = () => { throw new Error('Relay network error'); };
@@ -401,14 +406,15 @@
                         new QRCode(qrEl, { text: pin, width: 160, height: 160, colorDark: '#000', colorLight: '#fff' });
                         sendBtn.disabled = false;
                     } else {
-                        // Trigger Fallback
-                        uploadWithFallback();
+                        // Trigger Fallback with debug info visible
+                        const dbg = 'Direct Mode failed: ' + xhr.status + ' ' + (xhr.responseText || '').substring(0, 50);
+                        uploadWithFallback(dbg);
                     }
                 };
 
                 xhr.onerror = () => {
                     // Trigger Fallback
-                    uploadWithFallback();
+                    uploadWithFallback('Direct Mode Network Error');
                 };
 
                 // Stream the raw, unbuffered file directly onto bucket storage
