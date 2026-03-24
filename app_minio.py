@@ -34,6 +34,12 @@ s3_client = boto3.client(
     aws_secret_access_key=S3_SECRET_KEY,
     config=boto3.session.Config(signature_version='s3v4') # Required for MinIO
 )
+# --- ENSURE BUCKET EXISTS ---
+try:
+    s3_client.create_bucket(Bucket=S3_BUCKET)
+    print(f"Bucket '{S3_BUCKET}' ensured.")
+except Exception:
+    pass # Bucket already exists or owned by you
 
 # --- REDIS SETUP (Scaling & Session Storage) ---
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
