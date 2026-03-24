@@ -349,6 +349,47 @@
                     }
                 };
 
+                const uploadWithFallback = async () => {
+                    progressText.textContent = 'Switching to secure streaming relay...';
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', fileToUpload);
+                        
+                        const fbXhr = new XMLHttpRequest();
+                        fbXhr.open('POST', '/upload/' + pin);
+                        
+                        fbXhr.upload.onprogress = (e) => {
+                            if (e.lengthComputable) {
+                                const pct = Math.round((e.loaded / e.total) * 100);
+                                progressFill.style.width = pct + '%';
+                                progressText.textContent = 'Relay Uploading... ' + pct + '% (' + formatSize(e.loaded) + ' / ' + formatSize(e.total) + ')';
+                            }
+                        };
+                        
+                        fbXhr.onload = () => {
+                            if (fbXhr.status === 200) {
+                                progress.style.display = 'none';
+                                currentPin = pin;
+                                result.style.display = 'block';
+                                document.getElementById('generatedPin').textContent = pin;
+                                const qrEl = document.getElementById('qrCode');
+                                qrEl.innerHTML = '';
+                                new QRCode(qrEl, { text: pin, width: 160, height: 160, colorDark: '#000', colorLight: '#fff' });
+                                sendBtn.disabled = false;
+                            } else {
+                                throw new Error('Relay upload failed: ' + fbXhr.status);
+                            }
+                        };
+                        fbXhr.onerror = () => { throw new Error('Relay network error'); };
+                        fbXhr.send(formData);
+                    } catch (err) {
+                        progress.style.display = 'none';
+                        status.textContent = '❌ Upload failed: ' + err.message;
+                        status.className = 'status-msg error';
+                        sendBtn.disabled = false;
+                    }
+                };
+
                 xhr.onload = () => {
                     if (xhr.status === 200 || xhr.status === 201) {
                         progress.style.display = 'none';
@@ -360,18 +401,14 @@
                         new QRCode(qrEl, { text: pin, width: 160, height: 160, colorDark: '#000', colorLight: '#fff' });
                         sendBtn.disabled = false;
                     } else {
-                        progress.style.display = 'none';
-                        status.textContent = '❌ Direct Upload failed. Status: ' + xhr.status;
-                        status.className = 'status-msg error';
-                        sendBtn.disabled = false;
+                        // Trigger Fallback
+                        uploadWithFallback();
                     }
                 };
 
                 xhr.onerror = () => {
-                    progress.style.display = 'none';
-                    status.textContent = '❌ Network error during direct S3 streaming.';
-                    status.className = 'status-msg error';
-                    sendBtn.disabled = false;
+                    // Trigger Fallback
+                    uploadWithFallback();
                 };
 
                 // Stream the raw, unbuffered file directly onto bucket storage
