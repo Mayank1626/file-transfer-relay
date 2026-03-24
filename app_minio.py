@@ -184,12 +184,17 @@ def get_download_link(pin):
     key = f"{pin}_{filename}"
     try:
         req_host = request.host.split(':')[0]
+        protocol = request.headers.get('X-Forwarded-Proto', 'http')
+        
         signing_client = boto3.client(
             's3',
-            endpoint_url=f"http://{req_host}:9000",
+            endpoint_url=f"{protocol}://{req_host}/minio" if protocol == 'https' else f"http://{req_host}:9000",
             aws_access_key_id=S3_ACCESS_KEY,
             aws_secret_access_key=S3_SECRET_KEY,
-            config=boto3.session.Config(signature_version='s3v4')
+            config=boto3.session.Config(
+                signature_version='s3v4',
+                s3={'addressing_style': 'path'} # 🟢 Force Path address for Nginx subfolder relay!
+            )
         )
         url = signing_client.generate_presigned_url(
             'get_object',
