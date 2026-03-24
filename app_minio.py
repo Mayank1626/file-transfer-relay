@@ -143,16 +143,8 @@ def upload_file(pin):
     key = f"{pin}_{filename}"
     
     try:
-        # Use internal Docker endpoint link directly to bypass CORS Fully!
-        s3 = boto3.client(
-            's3',
-            endpoint_url="http://minio:9000",
-            aws_access_key_id=S3_ACCESS_KEY,
-            aws_secret_access_key=S3_SECRET_KEY
-        )
-        
-        # Stream the file content directly into MinIO S3 bucket
-        s3.upload_fileobj(file.stream, S3_BUCKET, key)
+        # Use global s3_client to retain signature_version='s3v4' config
+        s3_client.upload_fileobj(file.stream, S3_BUCKET, key)
         
         # Update session state to match structure
         data['filename'] = filename
