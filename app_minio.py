@@ -41,6 +41,26 @@ try:
 except Exception:
     pass # Bucket already exists or owned by you
 
+# --- AUTO-CLEANUP LIFECYCLE (24-HOURS) ---
+try:
+    s3_client.put_bucket_lifecycle_configuration(
+        Bucket=S3_BUCKET,
+        LifecycleConfiguration={
+            'Rules': [
+                {
+                    'ID': 'AutoTrashOldFiles',
+                    'Status': 'Enabled',
+                    'Filter': {'Prefix': ''},
+                    'Expiration': {'Days': 1},
+                    'AbortIncompleteMultipartUpload': {'DaysAfterInitiation': 1}
+                }
+            ]
+        }
+    )
+    print("Automatic 24-Hour Garbage Collection enabled for MinIO.")
+except Exception as e:
+    print(f"Lifecycle warning: {e}")
+
 # --- REDIS SETUP (Scaling & Session Storage) ---
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
