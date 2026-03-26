@@ -172,7 +172,7 @@
                     <p class="file-count" id="fileCount"></p>
                     <div class="filename" id="selectedFileName"></div>
                 </div>
-                <input type="file" id="fileInput" multiple style="display:none">
+                <input type="file" id="fileInput" style="display:none">
                 <div class="progress-wrap" id="sendProgress">
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="sendProgressFill"></div></div>
                     <div class="progress-text" id="sendProgressText">Uploading... 0%</div>
@@ -239,15 +239,12 @@
         const dropZone = document.getElementById('dropZone');
 
         function updateFileDisplay(files) {
-            selectedFiles = Array.from(files);
-            const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
-            if (selectedFiles.length === 1) {
-                document.getElementById('selectedFileName').textContent = selectedFiles[0].name + ' (' + formatSize(selectedFiles[0].size) + ')';
-                document.getElementById('fileCount').textContent = '';
-            } else {
-                document.getElementById('selectedFileName').textContent = formatSize(totalSize) + ' total';
-                document.getElementById('fileCount').textContent = selectedFiles.length + ' files selected';
+            if (files.length > 1) {
+                alert("For maximum speed and stability, FileDrop supports 1 file per PIN. Please ZIP your files together first!");
             }
+            selectedFiles = [files[0]];
+            document.getElementById('selectedFileName').textContent = selectedFiles[0].name + ' (' + formatSize(selectedFiles[0].size) + ')';
+            document.getElementById('fileCount').textContent = '';
             document.getElementById('sendBtn').disabled = false;
         }
 
