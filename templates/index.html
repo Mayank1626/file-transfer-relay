@@ -403,19 +403,13 @@
                         new QRCode(qrEl, { text: pin, width: 160, height: 160, colorDark: '#000', colorLight: '#fff' });
                         sendBtn.disabled = false;
                     } else {
-                        // Freeze on screen to debug
-                        const dbg = 'Direct Mode failed: ' + xhr.status + ' | ' + (xhr.responseText || '').substring(0, 50);
-                        progressText.textContent = dbg;
-                        progressFill.style.backgroundColor = 'red';
-                        // uploadWithFallback(dbg);
+                        const dbg = 'Direct Stream Interrupted: ' + xhr.status;
+                        uploadWithFallback(dbg);
                     }
                 };
 
                 xhr.onerror = () => {
-                    // Freeze on screen to debug
-                    progressText.textContent = 'Direct Mode Network Error / Client Drop';
-                    progressFill.style.backgroundColor = 'red';
-                    // uploadWithFallback('Direct Mode Network Error');
+                    uploadWithFallback('Direct Stream Network Drop');
                 };
 
                 // Stream the raw, unbuffered file directly onto bucket storage
