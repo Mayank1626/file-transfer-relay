@@ -501,6 +501,18 @@
 
         document.getElementById('pinInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') checkPin();
+        // 🟢 DEEP-LINK ROUTING FOR ANDROID BROWSER HANDOFF
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoPin = urlParams.get('pin');
+            if (autoPin && autoPin.length === 6) {
+                switchTab('receive');
+                document.getElementById('pinInput').value = autoPin;
+                checkPin();
+                
+                // Remove the raw query parameter from the URL bar for aesthetic beauty
+                window.history.replaceState({}, document.title, "/");
+            }
         });
     </script>
 </body>
