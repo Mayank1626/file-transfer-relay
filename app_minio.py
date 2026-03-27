@@ -124,7 +124,7 @@ def get_upload_link(pin):
         
         signing_client = boto3.client(
             's3',
-            endpoint_url=f"{protocol}://{req_host}" if protocol == 'https' else f"http://{req_host}:9000",
+            endpoint_url=f"{protocol}://{req_host}",
             aws_access_key_id=S3_ACCESS_KEY,
             aws_secret_access_key=S3_SECRET_KEY,
             config=boto3.session.Config(
@@ -213,7 +213,7 @@ def get_download_link(pin):
         
         signing_client = boto3.client(
             's3',
-            endpoint_url=f"{protocol}://{req_host}" if protocol == 'https' else f"http://{req_host}:9000",
+            endpoint_url=f"{protocol}://{req_host}",
             aws_access_key_id=S3_ACCESS_KEY,
             aws_secret_access_key=S3_SECRET_KEY,
             config=boto3.session.Config(
