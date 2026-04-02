@@ -11,6 +11,7 @@ RUN pip install boto3 gunicorn  # Ensure production-ready packages exist
 # Note: When deploying, rename app_minio.py into app.py
 COPY app_minio.py ./app.py
 COPY templates/ ./templates/
+COPY static/ ./static/
 
 EXPOSE 5000
 
