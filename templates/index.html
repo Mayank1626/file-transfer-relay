@@ -27,6 +27,7 @@
             font-weight: 800;
             background: linear-gradient(135deg, #00E676, #00BFA5);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 8px;
         }
@@ -202,6 +203,7 @@
                     <div class="progress-text" id="receiveProgressText">Checking...</div>
                 </div>
                 <button class="btn btn-primary" id="checkPinBtn" onclick="checkPin()">🔍 Check PIN</button>
+                <button class="btn" id="cancelDownloadBtn" style="display:none; background:#CC3333; color:white; width:100%; padding:14px; border-radius:12px; margin-top:10px;" onclick="cancelDownload()">✕ Cancel Download</button>
                 <!-- File info card (hidden until PIN is verified) -->
                 <div class="result" id="fileInfoCard" style="display:none;">
                     <p>📄 File ready to download:</p>
@@ -473,24 +475,110 @@
             }
         }
 
-        function confirmDownload() {
+        let downloadController = null;
+
+        async function confirmDownload() {
             if (!pendingPin) return;
 
-            // Start download by fetching presigned URL from API
-            fetch('/download-link/' + pendingPin)
-                .then(res => res.json())
-                .then(data => {
-                    // 🟢 Use top-level redirection so QWebEngine treats as absolute download trigger
-                    window.location.href = data.download_url;
+            const progressWrap = document.getElementById('receiveProgress');
+            const progressFill = document.getElementById('receiveProgressFill');
+            const progressText = document.getElementById('receiveProgressText');
+            const checkPinBtn = document.getElementById('checkPinBtn');
+            const cancelBtn = document.getElementById('cancelDownloadBtn');
+            const fileInfoCard = document.getElementById('fileInfoCard');
 
-                    document.getElementById('fileInfoCard').style.display = 'none';
-                    showReceiveStatus('✅ Download started! Check your Downloads folder.', 'success');
-                    document.getElementById('pinInput').value = '';
-                    pendingPin = '';
-                })
-                .catch(err => {
-                    showReceiveStatus('❌ Error triggering download: ' + err.message, 'error');
-                });
+            try {
+                // Fetch presigned URL from API
+                const res = await fetch('/download-link/' + pendingPin);
+                const data = await res.json();
+                
+                if (!data.download_url) throw new Error("Invalid download link");
+
+                // UI setup for download
+                fileInfoCard.style.display = 'none';
+                checkPinBtn.style.display = 'none';
+                progressWrap.style.display = 'block';
+                cancelBtn.style.display = 'block';
+                progressFill.style.width = '0%';
+                progressText.textContent = 'Starting download...';
+
+                downloadController = new AbortController();
+                
+                const response = await fetch(data.download_url, { signal: downloadController.signal });
+                if (!response.ok) throw new Error('Server rejected stream: ' + response.status);
+
+                const contentLength = response.headers.get('content-length');
+                const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+                
+                // Read the stream chunk by chunk
+                const reader = response.body.getReader();
+                const chunks = [];
+                let receivedBytes = 0;
+                let lastUiUpdate = Date.now();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    chunks.push(value);
+                    receivedBytes += value.length;
+                    
+                    const now = Date.now();
+                    if (now - lastUiUpdate > 250) { // Limit UI updates to 4fps
+                        lastUiUpdate = now;
+                        const mbStr = (receivedBytes / (1024 * 1024)).toFixed(1);
+                        if (totalBytes > 0) {
+                            const totalMbStr = (totalBytes / (1024 * 1024)).toFixed(1);
+                            const percent = Math.round((receivedBytes / totalBytes) * 100);
+                            progressFill.style.width = percent + '%';
+                            progressText.textContent = `Downloading... ${mbStr} / ${totalMbStr} MB (${percent}%)`;
+                        } else {
+                            progressFill.style.width = '100%';
+                            progressText.textContent = `Downloading... ${mbStr} MB`;
+                        }
+                    }
+                }
+
+                // Download complete - compile blob and trigger browser save
+                progressText.textContent = 'Finalizing file...';
+                const blob = new Blob(chunks);
+                const objectUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = objectUrl;
+                a.download = document.getElementById('fileInfoName').textContent;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(objectUrl);
+
+                showReceiveStatus('✅ Saved to Downloads!', 'success');
+                cancelBtn.style.display = 'none';
+                progressWrap.style.display = 'none';
+                checkPinBtn.style.display = 'block';
+                document.getElementById('pinInput').value = '';
+                pendingPin = '';
+                downloadController = null;
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    showReceiveStatus('❌ Download cancelled.', 'error');
+                } else {
+                    showReceiveStatus('❌ Error: ' + err.message, 'error');
+                }
+                
+                cancelBtn.style.display = 'none';
+                progressWrap.style.display = 'none';
+                checkPinBtn.style.display = 'block';
+                // Reshow the confirm download card so they can retry
+                fileInfoCard.style.display = 'block';
+                downloadController = null;
+            }
+        }
+
+        function cancelDownload() {
+            if (downloadController) {
+                downloadController.abort();
+            }
         }
 
         function showReceiveStatus(msg, type) {
@@ -499,12 +587,16 @@
             el.className = 'status-msg ' + type;
         }
 
-        document.getElementById('pinInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') checkPin();
+        document.getElementById('pinInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                checkPin();
+            }
+        });
+
         // 🟢 DEEP-LINK ROUTING FOR ANDROID BROWSER HANDOFF
-        window.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const autoPin = urlParams.get('pin');
+        window.addEventListener('DOMContentLoaded', function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var autoPin = urlParams.get('pin');
             if (autoPin && autoPin.length === 6) {
                 switchTab('receive');
                 document.getElementById('pinInput').value = autoPin;

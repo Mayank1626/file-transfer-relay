@@ -26,6 +26,9 @@ S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY", "admin")
 S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY", "supersecret")
 S3_BUCKET = os.environ.get("S3_BUCKET", "filedrop")
 
+if S3_ACCESS_KEY == "admin" or S3_SECRET_KEY == "supersecret":
+    print("WARNING: Using default MinIO credentials in production is highly insecure!")
+
 # Connect to Minio S3 API
 s3_client = boto3.client(
     's3',
