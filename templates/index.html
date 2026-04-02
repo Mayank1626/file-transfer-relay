@@ -501,6 +501,11 @@
                 cancelBtn.style.display = 'block';
                 progressFill.style.width = '0%';
                 progressText.textContent = 'Starting download...';
+                
+                // Clear any previous error/cancel messages
+                const statusEl = document.getElementById('receiveStatus');
+                statusEl.textContent = '';
+                statusEl.className = 'status-msg';
 
                 downloadController = new AbortController();
                 
