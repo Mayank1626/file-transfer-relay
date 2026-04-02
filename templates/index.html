@@ -217,10 +217,15 @@
 
     <div class="footer">
         <p>Files are encrypted in transit and auto-deleted after download.<br>
-        <a href="/static/filedrop.apk" download>Get the Android App</a> for mobile transfers.</p>
+        <span id="androidAppPromo" style="display:none;"><a href="/static/filedrop.apk" download>Get the native Android App</a> for faster transfers.</span></p>
     </div>
 
     <script>
+        // Only show Android App download link to users actually on Android devices
+        if (/android/i.test(navigator.userAgent)) {
+            document.getElementById('androidAppPromo').style.display = 'inline';
+        }
+
         let selectedFiles = [];
         let currentPin = '';
 
