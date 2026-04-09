@@ -208,7 +208,7 @@
                 <div class="result" id="fileInfoCard" style="display:none;">
                     <p>📄 File ready to download:</p>
                     <div class="pin-display" id="fileInfoName" style="font-size:1.2rem;letter-spacing:0;color:#00E676;word-break:break-all;"></div>
-                    <button class="btn btn-primary" style="margin-top:12px;" onclick="confirmDownload()">📥 Download Now</button>
+                    <button class="btn btn-primary" id="confirmDownloadBtn" style="margin-top:12px;" onclick="confirmDownload()">📥 Download Now</button>
                 </div>
                 <div class="status-msg" id="receiveStatus"></div>
             </div>
@@ -493,6 +493,9 @@
             const fileInfoCard = document.getElementById('fileInfoCard');
 
             try {
+                const reqBtn = document.getElementById('confirmDownloadBtn');
+                reqBtn.disabled = true;
+                
                 // Fetch presigned URL from API
                 const res = await fetch('/download-link/' + pendingPin);
                 const data = await res.json();
@@ -582,6 +585,9 @@
                 // Reshow the confirm download card so they can retry
                 fileInfoCard.style.display = 'block';
                 downloadController = null;
+            } finally {
+                const reqBtn = document.getElementById('confirmDownloadBtn');
+                if(reqBtn) reqBtn.disabled = false;
             }
         }
 

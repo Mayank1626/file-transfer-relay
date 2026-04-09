@@ -2,14 +2,70 @@ import os
 import random
 import time
 import json
-from flask import Flask, request, jsonify
+import logging
+from logging.handlers import RotatingFileHandler
+import uuid
+import re
+from flask import Flask, request, jsonify, has_request_context
 import boto3
 import redis
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import os
+from werkzeug.exceptions import HTTPException
 
 app = Flask(__name__)
+
+class RequestIDFilter(logging.Filter):
+    def filter(self, record):
+        if has_request_context():
+            record.request_id = request.environ.get('request_id', 'N/A')
+            record.endpoint = request.endpoint or 'N/A'
+        else:
+            record.request_id = 'N/A'
+            record.endpoint = 'N/A'
+        return True
+
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+handler = RotatingFileHandler('logs/filedrop.log', maxBytes=10*1024*1024, backupCount=5)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s [%(request_id)s] %(endpoint)s: %(message)s')
+handler.setFormatter(formatter)
+handler.addFilter(RequestIDFilter())
+app.logger.addHandler(handler)
+app.logger.setLevel(logging.INFO)
+
+@app.before_request
+def before_request():
+    request.environ['request_id'] = uuid.uuid4().hex[:8]
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return e
+    req_id = request.environ.get('request_id', 'N/A')
+    app.logger.error(f"Server Error: {str(e)}", extra={'request_id': req_id, 'endpoint': request.endpoint})
+    return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({"success": False, "error": "Too many requests. Please slow down."}), 429
+
+@app.errorhandler(413)
+def payload_too_large(e):
+    return jsonify({"success": False, "error": "File size exceeds the 2GB limit."}), 413
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    return response
+
+def sanitize_filename(filename):
+    cleaned = re.sub(r'[<>\:"/\\|?*]', '_', filename)
+    if not cleaned.strip():
+        cleaned = "shared_file"
+    return cleaned[:150]
 
 @app.route('/')
 def index():
@@ -100,6 +156,7 @@ def generate_pin():
 @app.route('/request-pin', methods=['GET'])
 @limiter.limit("10 per minute")
 def request_pin():
+    redis_client.incr("stats:total_uploads")
     pin = generate_pin()
     data = {
         'filename': None,
@@ -110,13 +167,16 @@ def request_pin():
     return jsonify({'pin': pin})
 
 @app.route('/upload-link/<pin>', methods=['POST'])
+@limiter.limit("20 per hour")
 def get_upload_link(pin):
     data = load_session(pin)
     if not data:
+        app.logger.warning(f"Upload link request: Invalid or expired PIN {pin}")
         return jsonify({'error': 'Invalid or expired PIN.'}), 404
         
     req_data = request.get_json() or {}
-    filename = req_data.get('filename', 'shared_file')
+    raw_filename = req_data.get('filename', 'shared_file')
+    filename = sanitize_filename(raw_filename)
     content_type = req_data.get('content_type', 'application/octet-stream')
     
     # Generate Presigned URL for PUT Upload
@@ -152,11 +212,14 @@ def get_upload_link(pin):
         data['timestamp'] = time.time()
         save_session(pin, data)
         
+        app.logger.info(f"Upload link successfully generated for {filename}")
+        
         return jsonify({
             'upload_url': url,
             'key': key
         })
     except Exception as e:
+        app.logger.error(f"S3 link generation failed: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/upload/<pin>', methods=['POST'])
@@ -191,7 +254,7 @@ def upload_file(pin):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/check/<pin>', methods=['GET'])
-@limiter.limit("20 per minute")
+@limiter.limit("5 per minute")
 def check_session(pin):
     data = load_session(pin)
     if not data:
@@ -235,10 +298,22 @@ def get_download_link(pin):
         )
         return jsonify({'download_url': url})
     except Exception as e:
+        app.logger.error(f"Download failure: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/stats', methods=['GET'])
+def get_stats():
+    admin_key = os.getenv("ADMIN_KEY")
+    if request.args.get("key") != admin_key or not admin_key:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    value = redis_client.get("stats:total_uploads")
+    total = int(value.decode()) if isinstance(value, bytes) else (int(value) if value else 0)
+    
+    return jsonify({"success": True, "total_uploads_initiated": total})
+
 if __name__ == '__main__':
-    # Enable Max Content Length for large uploads 1GB+
-    app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024 
+    # Enable Max Content Length for large uploads 2GB limit
+    app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024 
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, threaded=True)

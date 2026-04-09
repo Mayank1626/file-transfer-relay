@@ -16,4 +16,4 @@ COPY static/ ./static/
 EXPOSE 5000
 
 # Run using Gunicorn with generous stream timeout and multithreading
-CMD ["gunicorn", "app:app", "--timeout", "86400", "--threads", "4", "--access-logfile", "-", "-b", "0.0.0.0:5000"]
+CMD ["gunicorn", "app_minio:app", "--workers", "2", "--threads", "4", "--timeout", "120", "--access-logfile", "-", "-b", "0.0.0.0:5000"]
