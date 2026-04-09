@@ -8,8 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install boto3 gunicorn  # Ensure production-ready packages exist
 
 # Copy app files
-# Note: When deploying, rename app_minio.py into app.py
-COPY app_minio.py ./app.py
+COPY app_minio.py .
 COPY templates/ ./templates/
 COPY static/ ./static/
 
