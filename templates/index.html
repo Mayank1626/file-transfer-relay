@@ -189,6 +189,7 @@
                     </div>
                 </div>
                 <button class="btn btn-primary" id="sendBtn" disabled onclick="sendFile()">Send File(s)</button>
+                <button class="btn" id="cancelUploadBtn" style="display:none; background:#CC3333; color:white; width:100%; padding:14px; border-radius:12px; margin-top:10px;" onclick="cancelUpload()">✕ Cancel Upload</button>
                 <div class="status-msg" id="sendStatus"></div>
             </div>
         </div>
@@ -228,6 +229,19 @@
 
         let selectedFiles = [];
         let currentPin = '';
+        let activeUploadXhr = null;
+
+        function cancelUpload() {
+            if (activeUploadXhr) {
+                activeUploadXhr.abort();
+                activeUploadXhr = null;
+                document.getElementById('sendStatus').className = 'status-msg error';
+                document.getElementById('sendStatus').textContent = '❌ Upload cancelled.';
+                document.getElementById('sendProgress').style.display = 'none';
+                document.getElementById('cancelUploadBtn').style.display = 'none';
+                document.getElementById('sendBtn').disabled = false;
+            }
+        }
 
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -341,6 +355,9 @@
 
                 // Step 3: Stream raw binary buffer directly to MinIO Direct-to-Storage
                 const xhr = new XMLHttpRequest();
+                activeUploadXhr = xhr;
+                document.getElementById('cancelUploadBtn').style.display = 'block';
+                
                 xhr.open('PUT', s3Url);
                 // 🟢 Set precise Content-Type to avoid 403/Signature mismatch ERRORS!
                 xhr.setRequestHeader('Content-Type', cType);
@@ -360,6 +377,9 @@
                         formData.append('file', fileToUpload);
                         
                         const fbXhr = new XMLHttpRequest();
+                        activeUploadXhr = fbXhr;
+                        document.getElementById('cancelUploadBtn').style.display = 'block';
+                        
                         fbXhr.open('POST', '/upload/' + pin);
                         
                         fbXhr.upload.onprogress = (e) => {
@@ -375,6 +395,7 @@
                         };
                         
                         fbXhr.onload = () => {
+                            document.getElementById('cancelUploadBtn').style.display = 'none';
                             progress.style.display = 'none';
                             sendBtn.disabled = false;
                             if (fbXhr.status === 200) {
@@ -392,6 +413,7 @@
                         fbXhr.onerror = () => { throw new Error('Relay network error'); };
                         fbXhr.send(formData);
                     } catch (err) {
+                        document.getElementById('cancelUploadBtn').style.display = 'none';
                         progress.style.display = 'none';
                         status.textContent = '❌ Upload failed: ' + err.message;
                         status.className = 'status-msg error';
@@ -401,6 +423,7 @@
 
                 xhr.onload = () => {
                     if (xhr.status === 200 || xhr.status === 201) {
+                        document.getElementById('cancelUploadBtn').style.display = 'none';
                         progress.style.display = 'none';
                         currentPin = pin;
                         result.style.display = 'block';
@@ -422,6 +445,7 @@
                 // Stream the raw, unbuffered file directly onto bucket storage
                 xhr.send(fileToUpload);
             } catch (err) {
+                document.getElementById('cancelUploadBtn').style.display = 'none';
                 progress.style.display = 'none';
                 status.textContent = '❌ Error: ' + err.message;
                 status.className = 'status-msg error';
