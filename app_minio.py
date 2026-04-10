@@ -26,7 +26,7 @@ class RequestIDFilter(logging.Filter):
         return True
 
 if not os.path.exists('logs'):
-    os.makedirs('logs')
+    os.makedirs('logs', exist_ok=True)
 handler = RotatingFileHandler('logs/filedrop.log', maxBytes=10*1024*1024, backupCount=5)
 formatter = logging.Formatter('[%(asctime)s] %(levelname)s [%(request_id)s] %(endpoint)s: %(message)s')
 handler.setFormatter(formatter)
