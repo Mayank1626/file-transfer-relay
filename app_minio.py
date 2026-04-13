@@ -12,8 +12,8 @@ import redis
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import HTTPException
-
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024
 
 class RequestIDFilter(logging.Filter):
     def filter(self, record):
