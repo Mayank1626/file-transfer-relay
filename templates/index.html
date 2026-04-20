@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FileDrop — Send Files Instantly</title>
+    <title>ZapLink — Send Files Instantly</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <meta name="description" content="Transfer files between any devices instantly. No account needed. Original quality. Zero compression.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -149,7 +149,7 @@
 </head>
 <body>
     <div class="hero">
-        <h1>FileDrop</h1>
+        <h1 class="logo">ZapLink</h1>
         <p>Transfer files between any devices instantly</p>
         <div class="badges">
             <span class="badge">🔒 No Account Needed</span>
@@ -266,11 +266,11 @@
             status.className = 'status-msg'; // Clear previous errors
             
             if (files.length > 1) {
-                status.textContent = "⚠️ For maximum speed, FileDrop supports 1 file per PIN. Please ZIP them together first!";
+                status.textContent = "⚠️ For maximum speed, ZapLink supports 1 file per PIN. Please ZIP them together first!";
                 status.className = 'status-msg error';
             }
             if (files[0].size > 2 * 1024 * 1024 * 1024) {
-                status.textContent = '❌ File is large....this filedrop accepts till 2gb uploads so select files upto 2gb';
+                status.textContent = '❌ File is large....ZapLink accepts till 2gb uploads so select files upto 2gb';
                 status.className = 'status-msg error';
                 document.getElementById('fileInput').value = '';
                 return;
