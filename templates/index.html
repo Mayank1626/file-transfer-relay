@@ -487,9 +487,15 @@
 
             try {
                 const checkRes = await fetch('/check/' + pin);
-                if (checkRes.status === 404) {
+                if (!checkRes.ok) {
+                    let errorMsg = 'Check failed. Status: ' + checkRes.status;
+                    try {
+                        const errData = await checkRes.json();
+                        if (errData.error) errorMsg = errData.error;
+                    } catch (e) {}
+                    
                     progress.style.display = 'none';
-                    showReceiveStatus('❌ Invalid or expired PIN.', 'error');
+                    showReceiveStatus('❌ ' + errorMsg, 'error');
                     checkPinBtn.disabled = false;
                     return;
                 }
