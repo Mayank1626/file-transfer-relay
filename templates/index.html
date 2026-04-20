@@ -170,6 +170,7 @@
                 <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
                     <div class="icon">📁</div>
                     <p>Click to browse or drag & drop files here</p>
+                    <p style="font-size: 0.75rem; color: #555; margin-top: 4px;">(Max 2 GB per upload)</p>
                     <p class="file-count" id="fileCount"></p>
                     <div class="filename" id="selectedFileName"></div>
                 </div>
@@ -262,6 +263,11 @@
         function updateFileDisplay(files) {
             if (files.length > 1) {
                 alert("For maximum speed and stability, FileDrop supports 1 file per PIN. Please ZIP your files together first!");
+            }
+            if (files[0].size > 2 * 1024 * 1024 * 1024) {
+                alert("File is large....this filedrop accepts till 2gb uploads so select files upto 2gb");
+                document.getElementById('fileInput').value = '';
+                return;
             }
             selectedFiles = [files[0]];
             document.getElementById('selectedFileName').textContent = selectedFiles[0].name + ' (' + formatSize(selectedFiles[0].size) + ')';
