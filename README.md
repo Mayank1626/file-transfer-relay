@@ -22,6 +22,43 @@ It was built from the ground up to solve the friction of modern file sharing by 
 
 ### 🏗️ Architecture & Tech Stack
 
+```mermaid
+graph TD
+    %% Styling
+    classDef client fill:#00E676,stroke:#0A0A0A,stroke-width:2px,color:#0A0A0A,font-weight:bold;
+    classDef server fill:#1A212A,stroke:#00E676,stroke-width:2px,color:#FFFFFF;
+    classDef db fill:#00BFA5,stroke:#0A0A0A,stroke-width:2px,color:#0A0A0A;
+    
+    subgraph Clients ["Endpoints (Native & Web)"]
+        A[📱 Android App <br/> Kotlin / OkHttp]:::client
+        B[💻 PC Desktop <br/> PyQt6 / Local Server]:::client
+        C[🌐 Web Browser <br/> HTML / JS]:::client
+    end
+    
+    subgraph Cloud ["Cloud Infrastructure (Docker)"]
+        D[🛡️ NGINX <br/> Reverse Proxy]:::server
+        E[⚙️ Flask API <br/> Python Gunicorn]:::server
+        F[(🗄️ MinIO S3 <br/> Object Storage)]:::db
+        G[(⚡ Redis <br/> Rate Limiting)]:::db
+    end
+
+    A <-->|HTTPS API / Pre-Signed URLs| D
+    B <-->|HTTPS API / Pre-Signed URLs| D
+    C <-->|HTTPS API / Pre-Signed URLs| D
+    
+    D --> E
+    E -->|Enforces Limits| G
+    E -->|Generates Upload Tokens| F
+    
+    %% Direct S3 Streaming
+    A -.->|Streams 2GB+ File Directly| F
+    B -.->|Streams 2GB+ File Directly| F
+    C -.->|Streams 2GB+ File Directly| F
+    
+    %% Local Wifi P2P
+    A <==>|Local Wi-Fi Bypasses Cloud| B
+```
+
 ZapLink is a unified ecosystem composed of three distinct master applications:
 
 1.  **The Cloud API (`/cloud_relay`)**
