@@ -24,39 +24,23 @@ It was built from the ground up to solve the friction of modern file sharing by 
 
 ```mermaid
 graph TD
-    %% Styling
-    classDef client fill:#00E676,stroke:#0A0A0A,stroke-width:2px,color:#0A0A0A,font-weight:bold;
-    classDef server fill:#1A212A,stroke:#00E676,stroke-width:2px,color:#FFFFFF;
-    classDef db fill:#00BFA5,stroke:#0A0A0A,stroke-width:2px,color:#0A0A0A;
-    
-    subgraph Clients ["Endpoints (Native & Web)"]
-        A[📱 Android App <br/> Kotlin / OkHttp]:::client
-        B[💻 PC Desktop <br/> PyQt6 / Local Server]:::client
-        C[🌐 Web Browser <br/> HTML / JS]:::client
-    end
-    
-    subgraph Cloud ["Cloud Infrastructure (Docker)"]
-        D[🛡️ NGINX <br/> Reverse Proxy]:::server
-        E[⚙️ Flask API <br/> Python Gunicorn]:::server
-        F[(🗄️ MinIO S3 <br/> Object Storage)]:::db
-        G[(⚡ Redis <br/> Rate Limiting)]:::db
-    end
+    classDef client fill:#00E676,stroke:#000,color:#000,font-weight:bold,rx:8px,ry:8px;
+    classDef server fill:#1A1A1A,stroke:#00E676,stroke-width:2px,color:#FFF,rx:8px,ry:8px;
+    classDef storage fill:#00BFA5,stroke:#000,color:#000,rx:8px,ry:8px;
 
-    A <-->|HTTPS API / Pre-Signed URLs| D
-    B <-->|HTTPS API / Pre-Signed URLs| D
-    C <-->|HTTPS API / Pre-Signed URLs| D
-    
-    D --> E
-    E -->|Enforces Limits| G
-    E -->|Generates Upload Tokens| F
-    
-    %% Direct S3 Streaming
-    A -.->|Streams 2GB+ File Directly| F
-    B -.->|Streams 2GB+ File Directly| F
-    C -.->|Streams 2GB+ File Directly| F
-    
-    %% Local Wifi P2P
-    A <==>|Local Wi-Fi Bypasses Cloud| B
+    %% Devices
+    Android[📱 Android App]:::client
+    Web[🌐 Web Browser]:::client
+    PC[💻 PC Desktop]:::client
+
+    %% Cloud Engine
+    API[⚙️ ZapLink Core API]:::server
+    DB[(🗄️ MinIO Object Vault)]:::storage
+
+    %% Simple Data Flow
+    Android & Web & PC -. "1. Authenticate & Request PIN" .-> API
+    API -. "2. Issue Upload Token" .-> Android & Web & PC
+    Android & Web & PC == "3. Direct File Stream (Zero Compression)" ==> DB
 ```
 
 ZapLink is a unified ecosystem composed of three distinct master applications:
