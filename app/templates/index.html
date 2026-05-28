@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZapLink — Frictionless File Transfer Ecosystem</title>
+    
+    <!-- Icon & Meta Details (SEO) -->
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="description" content="Transfer files between devices instantly. No accounts, no cables, no compression. Premium, secure local Wi-Fi and global cloud handoff.">
+    <meta name="keywords" content="file transfer, share files, secure drop, no compression, direct stream, zaplink, wifi transfer">
+    
+    <!-- Open Graph Social Cards -->
+    <meta property="og:title" content="ZapLink — Frictionless File Transfer">
+    <meta property="og:description" content="Transfer files between devices instantly in original quality. Zero compression.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/static/favicon.svg">
+
+    <!-- Fonts & Third-Party Helpers -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+    <!-- Custom Modular Stylesheets -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <!-- Brand Hero Section -->
+    <header class="hero">
+        <h1 class="logo">ZapLink</h1>
+        <p>Transfer files between any devices instantly</p>
+        <div class="badges">
+            <span class="badge" id="badgeNoAccount">🔒 No Account Needed</span>
+            <span class="badge" id="badgeOriginalQuality">📸 Original Quality</span>
+            <span class="badge" id="badgeAutoDeletes">🗑️ Auto-Deletes</span>
+        </div>
+    </header>
+
+    <!-- Core Interactive Area -->
+    <main class="container">
+        <!-- Reconnection Alert Banner -->
+        <div class="reconnect-banner" id="reconnectBanner">
+            <div class="text">
+                <!-- Injected dynamically in ui.js -->
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary resume-btn" id="reconnectResumeBtn">Resume</button>
+                <button class="btn btn-secondary dismiss-btn" id="reconnectDismissBtn">Dismiss</button>
+            </div>
+        </div>
+
+        <!-- Section Navigation Tabs -->
+        <nav class="tabs">
+            <div class="tab active" onclick="switchTab('send')" id="tabSend" role="tab" aria-selected="true">📤 Send</div>
+            <div class="tab" onclick="switchTab('receive')" id="tabReceive" role="tab" aria-selected="false">📥 Receive</div>
+            <div class="tab" onclick="switchTab('workspace')" id="tabWorkspace" role="tab" aria-selected="false">🧠 AI Workspace</div>
+        </nav>
+
+        <!-- 1. SEND SECTION PANEL -->
+        <section id="sendSection" class="section active" role="tabpanel" aria-labelledby="tabSend">
+            <div class="card">
+                <h2>Send File(s) <span style="font-size:0.75rem; color:var(--text-muted); font-weight:500;">Direct Stream</span></h2>
+                
+                <!-- Upload Drop-Zone Input Trigger -->
+                <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" tabindex="0" aria-label="Drop-zone. Click to browse files.">
+                    <span class="icon">📁</span>
+                    <p>Click to browse or drag & drop files here</p>
+                    <p style="font-size: 0.72rem; color: #5a5a60; margin-top: 4px;">(Max 2 GB per upload)</p>
+                    <div class="file-count" id="fileCount"></div>
+                    <div class="filename" id="selectedFileName"></div>
+                </div>
+                <input type="file" id="fileInput" style="display:none" aria-hidden="true">
+
+                <!-- Real-Time Upload Progress Indicator -->
+                <div class="progress-wrap" id="sendProgress">
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="sendProgressFill"></div></div>
+                    <div class="progress-text" id="sendProgressText">Uploading... 0%</div>
+                </div>
+
+                <!-- Shared Output Result Details (PIN / QR) -->
+                <div class="result" id="sendResult">
+                    <p>✅ Upload complete! Share this PIN:</p>
+                    <div class="pin-display" id="generatedPin" onclick="window.copyPin()" title="Click to copy PIN">000000</div>
+                    
+                    <div class="qr-wrap" id="qrWrapElement">
+                        <div id="qrCode"></div>
+                    </div>
+                    
+                    <p style="margin-top: 4px;">Scan the QR code or enter the PIN to download.<br>Auto-deletes after download or 1 hour.</p>
+                    
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" onclick="window.copyPin()" id="btnCopyPin">📋 Copy PIN</button>
+                        <button class="btn btn-secondary" onclick="window.sharePin()" id="btnSharePin">📤 Share Link</button>
+                    </div>
+                </div>
+
+                <!-- Action Button Handlers -->
+                <button class="btn btn-primary" id="sendBtn" disabled onclick="window.sendFile()">Send File(s)</button>
+                
+                <button class="btn btn-danger" id="cancelUploadBtn" style="display:none; margin-top:10px;" onclick="window.cancelUpload()">
+                    ✕ Cancel Upload
+                </button>
+                
+                <div class="status-msg" id="sendStatus"></div>
+            </div>
+        </section>
+
+        <!-- 2. RECEIVE SECTION PANEL -->
+        <section id="receiveSection" class="section" role="tabpanel" aria-labelledby="tabReceive">
+            <div class="card">
+                <h2>Receive a File</h2>
+                
+                <!-- PIN Text Field Input -->
+                <input type="text" class="pin-input" id="pinInput" placeholder="000000" maxlength="6" inputmode="numeric" aria-label="Enter 6 digit PIN">
+
+                <!-- Real-Time Download Progress Indicator -->
+                <div class="progress-wrap" id="receiveProgress">
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="receiveProgressFill"></div></div>
+                    <div class="progress-text" id="receiveProgressText">Checking PIN status...</div>
+                </div>
+
+                <!-- Main API Action Triggers -->
+                <button class="btn btn-primary" id="checkPinBtn" onclick="window.checkPin()">🔍 Check PIN</button>
+                
+                <button class="btn btn-danger" id="cancelDownloadBtn" style="display:none; margin-top:10px;" onclick="window.cancelDownload()">
+                    ✕ Cancel Download
+                </button>
+
+                <!-- Dynamic Metadata File Details (Hidden initially) -->
+                <div class="result success" id="fileInfoCard" style="display:none;">
+                    <p style="color:var(--text-muted); font-weight:600;">📄 File ready for extraction:</p>
+                    <div class="pin-display" id="fileInfoName" style="font-size:1.15rem; letter-spacing:0; color:var(--text-main); word-break:break-all; padding: 10px 0; font-family: var(--font-stack);"></div>
+                    <button class="btn btn-primary" id="confirmDownloadBtn" style="margin-top:12px;" onclick="window.confirmDownload()">
+                        📥 Download Now
+                    </button>
+                </div>
+
+                <div class="status-msg" id="receiveStatus"></div>
+            </div>
+        </section>
+
+        <!-- 3. AI WORKSPACE PANEL SECTION (Placeholder Area) -->
+        <section id="workspaceSection" class="section" role="tabpanel" aria-labelledby="tabWorkspace">
+            <!-- Structured dynamically inside static/components/ai-workspace.js -->
+        </section>
+    </main>
+
+    <!-- Ephemeral Legal Details Footer -->
+    <footer class="footer">
+        <p>Files are encrypted in transit and auto-deleted immediately after download.<br>
+        <span id="androidAppPromo" style="display:none;">
+            📱 <a href="/static/zaplink.apk" download>Get the native Android App</a> for high-speed offline transfers.
+        </span></p>
+    </footer>
+
+    <!-- Modular Cacheable JS Utility Assets -->
+    <script src="/static/js/notifications.js"></script>
+    <script src="/static/js/pairing.js"></script>
+    <script src="/static/js/transfer.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/components/ai-workspace.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

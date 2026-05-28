@@ -34,6 +34,8 @@ services:
       - S3_BUCKET=filedrop
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - STORAGE_ENGINE=s3
+      - SESSION_PROVIDER=redis
       - PYTHONUNBUFFERED=1
     depends_on:
       - minio
