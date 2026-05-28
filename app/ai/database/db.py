@@ -68,10 +68,38 @@ def init_db(app=None):
     );
     """)
 
-    # 4. Indexes for retrieval speed optimizations
+    # 4. clipboard_entries table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS clipboard_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content TEXT NOT NULL,
+        content_hash TEXT UNIQUE NOT NULL, -- SHA-256 to prevent duplicate entries
+        content_type TEXT NOT NULL, -- URL, CODE, COMMAND, JSON, SQL, TEXT
+        source_app TEXT, -- Name of foreground process executable
+        character_count INTEGER NOT NULL,
+        is_favorite INTEGER DEFAULT 0, -- 0 or 1
+        session_id TEXT, -- Grouped workflow block identifier
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # 5. excluded_hashes table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS excluded_hashes (
+        hash TEXT PRIMARY KEY, -- SHA-256 of text excluded permanently from index
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # 6. Indexes for retrieval speed optimizations
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_screenshots_hash ON screenshots(hash);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_ocr_results_screenshot_id ON ocr_results(screenshot_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_processing_jobs_status ON processing_jobs(status);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clipboard_hash ON clipboard_entries(content_hash);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clipboard_favorite ON clipboard_entries(is_favorite);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clipboard_type ON clipboard_entries(content_type);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clipboard_session ON clipboard_entries(session_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clipboard_created_at ON clipboard_entries(created_at);")
 
     conn.commit()
     conn.close()
