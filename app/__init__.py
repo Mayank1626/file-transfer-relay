@@ -4,6 +4,8 @@ from app.storage import init_storage
 from app.sessions import init_sessions
 from app.services.cleanup import start_cleanup_daemon
 from app.middleware.security import setup_logging, init_security_middleware, init_limiter
+from app.ai.database.db import init_db
+from app.ai.indexing.watcher import start_screenshot_watcher
 
 def create_app(config_class=Config):
     """Flask Application Factory.
@@ -46,6 +48,10 @@ def create_app(config_class=Config):
     
     # Start ephemeral file cleaners
     start_cleanup_daemon(app)
+    
+    # Start AI Memory Layer subsystems
+    init_db(app)
+    start_screenshot_watcher(app)
     
     app.logger.info("ZapLink Application successfully booted and paired.")
     return app
