@@ -5,7 +5,7 @@ MAX_CONTENT_LENGTH = 20480
 
 # Sensitive patterns
 JWT_PATTERN = re.compile(r'\beyJ[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]{2,}\b')
-CREDIT_CARD_PATTERN = re.compile(r'\b(?:\d[ -\s]*?){13,16}\b')
+CREDIT_CARD_PATTERN = re.compile(r'\b(?:\d[\s -]*?){13,16}\b')
 SENSITIVE_PARAMS_PATTERN = re.compile(
     r'(?i)\b(?:password|passwd|secret|api_key|apikey|private_key|token|auth_token|client_secret)\s*[:=\s]\s*[^\s]{6,}\b'
 )
