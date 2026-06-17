@@ -70,3 +70,17 @@ class StorageEngine(ABC):
             filename (str): The name of the file.
         """
         pass
+        
+    @abstractmethod
+    def exists(self, pin, filename):
+        """Checks if the file payload exists in storage.
+        
+        Args:
+            pin (str): The unique 6-digit session PIN.
+            filename (str): The name of the file.
+            
+        Returns:
+            bool: True if exists, False otherwise.
+        """
+        pass
+

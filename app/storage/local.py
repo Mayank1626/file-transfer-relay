@@ -45,3 +45,8 @@ class LocalStorageEngine(StorageEngine):
                 os.remove(filepath)
             except Exception:
                 pass
+                
+    def exists(self, pin, filename):
+        filepath = self._get_filepath(pin, filename)
+        return os.path.exists(filepath)
+

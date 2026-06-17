@@ -125,3 +125,12 @@ class S3StorageEngine(StorageEngine):
             self._s3_client.delete_object(Bucket=self.bucket, Key=key)
         except Exception:
             pass
+            
+    def exists(self, pin, filename):
+        key = self._get_key(pin, filename)
+        try:
+            self._s3_client.head_object(Bucket=self.bucket, Key=key)
+            return True
+        except Exception:
+            return False
+

@@ -152,6 +152,37 @@ def verify_upload(pin):
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+def _attempt_self_healing(session_data, pin):
+    """Helper to transition session status to READY if the file is found in storage.
+    This provides robust self-healing and backward-compatibility with older Android clients.
+    """
+    status = session_data.get('status')
+    if status == TransferState.READY:
+        return True, session_data
+
+    filename = session_data.get('filename')
+    if filename and status in (TransferState.CREATED, TransferState.UPLOADING, TransferState.UPLOADED, TransferState.VERIFIED):
+        storage = get_storage()
+        try:
+            if storage.exists(pin, filename):
+                if status == TransferState.CREATED:
+                    session_data = TransferStateMachine.transition(session_data, TransferState.UPLOADING)
+                if session_data['status'] == TransferState.UPLOADING:
+                    session_data = TransferStateMachine.transition(session_data, TransferState.UPLOADED)
+                if session_data['status'] == TransferState.UPLOADED:
+                    session_data = TransferStateMachine.transition(session_data, TransferState.VERIFIED)
+                if session_data['status'] == TransferState.VERIFIED:
+                    session_data = TransferStateMachine.transition(session_data, TransferState.READY)
+                
+                sessions = get_sessions()
+                sessions.save_session(pin, session_data)
+                current_app.logger.info(f"Self-healing: Auto-recovered session {pin} to READY status.")
+                return True, session_data
+        except Exception as e:
+            current_app.logger.warning(f"Self-healing check failed for session {pin}: {e}")
+            
+    return False, session_data
+
 @api_bp.route('/check/<pin>', methods=['GET'])
 @get_limiter_decorator("5 per minute")
 def check_session(pin):
@@ -162,6 +193,9 @@ def check_session(pin):
     if not session_data:
         return jsonify({'error': 'Invalid PIN.'}), 404
         
+    # Attempt self-healing if the state is not READY yet
+    recovered, session_data = _attempt_self_healing(session_data, pin)
+    
     status = session_data.get('status')
     if status == TransferState.READY:
         return jsonify({
@@ -182,6 +216,9 @@ def get_download_link(pin):
     if not session_data:
         return jsonify({'error': 'Invalid PIN.'}), 404
         
+    # Attempt self-healing if not READY
+    recovered, session_data = _attempt_self_healing(session_data, pin)
+    
     if session_data.get('status') != TransferState.READY:
         return jsonify({'error': 'File not ready yet.'}), 400
         
@@ -204,6 +241,9 @@ def download_file(pin):
     if not session_data:
         return jsonify({'error': 'Invalid PIN.'}), 404
         
+    # Attempt self-healing if not READY
+    recovered, session_data = _attempt_self_healing(session_data, pin)
+    
     if session_data.get('status') != TransferState.READY:
         return jsonify({'error': 'File not ready yet.'}), 400
         
@@ -224,6 +264,7 @@ def download_file(pin):
     except Exception as e:
         current_app.logger.error(f"Direct stream download failure: {e}")
         return jsonify({'error': str(e)}), 500
+
 
 @api_bp.route('/download-complete/<pin>', methods=['POST'])
 def download_complete(pin):
