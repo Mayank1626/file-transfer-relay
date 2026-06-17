@@ -93,15 +93,23 @@ def upload_file(pin):
         if is_multipart:
             filepath_or_key = storage.upload_file(pin, file)
         else:
-            filepath = storage._get_filepath(pin, filename)
-            with open(filepath, 'wb') as f:
-                chunk_size = 8192
-                while True:
-                    chunk = request.stream.read(chunk_size)
-                    if len(chunk) == 0:
-                        break
-                    f.write(chunk)
-            filepath_or_key = filepath
+            if hasattr(storage, '_get_filepath'):
+                filepath = storage._get_filepath(pin, filename)
+                with open(filepath, 'wb') as f:
+                    chunk_size = 8192
+                    while True:
+                        chunk = request.stream.read(chunk_size)
+                        if len(chunk) == 0:
+                            break
+                        f.write(chunk)
+                filepath_or_key = filepath
+            else:
+                # S3 Storage Stream
+                class StreamFile:
+                    def __init__(self, stream, name):
+                        self.stream = stream
+                        self.filename = name
+                filepath_or_key = storage.upload_file(pin, StreamFile(request.stream, filename))
         
         # Verification stage: Perform length checks and confirm writes
         session_data = TransferStateMachine.transition(session_data, TransferState.VERIFIED)
