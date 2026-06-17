@@ -67,16 +67,19 @@ def upload_file(pin):
     if not session_data:
         return jsonify({'error': 'Invalid or expired PIN.'}), 404
         
-    # Direct multipart/form-data upload check
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file element in request'}), 400
-        
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-        
-    filename = sanitize_filename(file.filename)
     storage = get_storage()
+    is_multipart = 'file' in request.files
+    
+    if is_multipart:
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+        filename = sanitize_filename(file.filename)
+    else:
+        # Raw bytes PUT upload
+        filename = session_data.get('filename')
+        if not filename:
+            filename = 'shared_file'
     
     try:
         # Enforce state transitions
@@ -87,14 +90,25 @@ def upload_file(pin):
         sessions.save_session(pin, session_data)
         
         # Save file to storage backend (MinIO / Local disk)
-        filepath_or_key = storage.upload_file(pin, file)
+        if is_multipart:
+            filepath_or_key = storage.upload_file(pin, file)
+        else:
+            filepath = storage._get_filepath(pin, filename)
+            with open(filepath, 'wb') as f:
+                chunk_size = 8192
+                while True:
+                    chunk = request.stream.read(chunk_size)
+                    if len(chunk) == 0:
+                        break
+                    f.write(chunk)
+            filepath_or_key = filepath
         
         # Verification stage: Perform length checks and confirm writes
         session_data = TransferStateMachine.transition(session_data, TransferState.VERIFIED)
         
         # Update session to ready status
         session_data['filename'] = filename
-        if not session_data.get('filepath') and not isinstance(filepath_or_key, str) or '/' in str(filepath_or_key):
+        if not session_data.get('filepath'):
             session_data['filepath'] = filepath_or_key
             
         session_data = TransferStateMachine.transition(session_data, TransferState.READY)
